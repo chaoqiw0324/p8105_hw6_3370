@@ -9,6 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(broom)
 library(knitr)
+library(modelr)
 ```
 
 # Problem 1
@@ -93,6 +94,35 @@ birthweight_df %>%
     x = "Fitted Values",
     y = "Residuals"
   ) 
-  
+
+```
+
+
+```{r}
+cv_df = 
+  crossv_mc(birthweight_df, 100) %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)) %>% 
+  mutate(
+    my_mod         = map(train, ~lm(bwt ~ bhead + blength + gaweeks, data = .x)),
+    bl_ga_mod      = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+    bh_bl_sex_mod  = map(train, ~lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, data = .x)) 
+    ) %>% 
+  mutate(
+    rmse_my        = map2_dbl(my_mod        , test, ~rmse(model = .x, data = .y)),
+    rmse_bl_ga     = map2_dbl(bl_ga_mod     , test, ~rmse(model = .x, data = .y)),
+    rmse_bh_bl_sex = map2_dbl(bh_bl_sex_mod , test, ~rmse(model = .x, data = .y))
+    )
+
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
 ```
 
