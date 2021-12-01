@@ -1,0 +1,10 @@
+---
+title: "p8105_hw6_cw3370.Rmd"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
