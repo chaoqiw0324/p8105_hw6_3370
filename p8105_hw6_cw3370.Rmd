@@ -12,6 +12,7 @@ library(knitr)
 ```
 
 # Problem 1
+Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).
 ```{r message=FALSE}
 birthweight_df <- read_csv("data/birthweight.csv") %>% 
   mutate(
@@ -32,82 +33,22 @@ birthweight_df <- read_csv("data/birthweight.csv") %>%
 
 ```
 
-based on knowledge for the factors that underly birthweight, l choose several factors, including: bhead,blength,frace,malform,mrace,ppwt,wtgain,smoken and then l make  plots and conduct SLR of birthweight versus each factor to see whether there are potential relationship(checking plot and R^2).Finally l choose bhead and blength.
-```{r eval = FALSE,echo=FALSE}
-#
-birthweight_df %>% 
-  ggplot(aes(x = bhead, y = bwt)) +
-  geom_point()
+Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
-lm(bwt ~ bhead, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
-
-#
-birthweight_df %>% 
-  ggplot(aes(x = blength, y = bwt)) +
-  geom_point()
-
-lm(bwt ~ blength, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
-#
-birthweight_df %>% 
-  ggplot(aes(x = frace, y = bwt)) +
-  geom_violin()
-
-lm(bwt ~ frace, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
-#
-birthweight_df %>% 
-  ggplot(aes(x = malform, y = bwt)) +
-  geom_violin()
-
-lm(bwt ~ malform, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
-#
-birthweight_df %>% 
-  ggplot(aes(x = mrace, y = bwt)) +
-  geom_violin()
-
-lm(bwt ~ mrace, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
-#
-birthweight_df %>% 
-  ggplot(aes(x = ppwt, y = bwt)) +
-  geom_point()
-
-lm(bwt ~ ppwt, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
-#
-birthweight_df %>% 
-  ggplot(aes(x = wtgain, y = bwt)) +
-  geom_point()
-
-
-
-lm(bwt ~ wtgain, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
-#
-birthweight_df %>% 
-  ggplot(aes(x = smoken, y = bwt)) +
-  geom_point()
-
-lm(bwt ~ smoken, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
-```
+based on knowledge for the factors that underly birthweight, l choose several factors, including:babysex, bhead,blength,frace,gaweeks,malform,mrace,ppwt,wtgain,smoken and then l make  plots and conduct SLR of birthweight versus each factor to see whether there are potential relationship(checking plot and R^2).Finally l choose bhead,blength,gaweeks,which R_squared are bigger than 0.1.
 
 ```{r echo=FALSE}
+lm(bwt ~ parity, data = birthweight_df) %>% 
+   broom::glance() %>% 
+   pull(r.squared)
+
 test <- 
 tibble(
-  variable = c("bhead","blength","frace","malform","mrace","ppwt","wtgain","smoken"),
+  variable = c("babysex","bhead","blength","frace","gaweeks","malform","mrace","ppwt","wtgain","smoken"),
   R_squared = c(
+lm(bwt ~ babysex, data = birthweight_df) %>% 
+   broom::glance() %>% 
+   pull(r.squared),
 lm(bwt ~ bhead, data = birthweight_df) %>% 
    broom::glance() %>% 
    pull(r.squared),
@@ -115,6 +56,9 @@ lm(bwt ~ blength, data = birthweight_df) %>%
    broom::glance() %>% 
    pull(r.squared),
 lm(bwt ~ frace, data = birthweight_df) %>% 
+   broom::glance() %>% 
+   pull(r.squared),
+lm(bwt ~ gaweeks, data = birthweight_df) %>% 
    broom::glance() %>% 
    pull(r.squared),
 lm(bwt ~ malform, data = birthweight_df) %>% 
@@ -135,3 +79,20 @@ lm(bwt ~ smoken, data = birthweight_df) %>%
 
 knitr::kable(test)
 ```
+
+```{r}
+fit <- lm(bwt ~ bhead + blength +gaweeks, data =birthweight_df)
+
+birthweight_df %>% 
+  modelr::add_residuals(fit) %>% 
+  modelr::add_predictions(fit) %>% 
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.3) +
+  labs(
+    title = "Plot of Model Residuals against Fitted Values", 
+    x = "Fitted Values",
+    y = "Residuals"
+  ) 
+  
+```
+
