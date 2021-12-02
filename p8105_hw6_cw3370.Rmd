@@ -10,12 +10,23 @@ library(tidyverse)
 library(broom)
 library(knitr)
 library(modelr)
+library(corrplot)
+library(leaps)
 ```
 
 # Problem 1
-Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).
+
+**Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).**
+
+Data Description
+```{r}
+birthweight <- read_csv("data/birthweight.csv")  
+skimr::skim(birthweight)
+```
+
 ```{r message=FALSE}
-birthweight_df <- read_csv("data/birthweight.csv") %>% 
+birthweight_df <- 
+  birthweight %>% 
   mutate(
     babysex = factor(babysex,
                      levels = c(1,2),
@@ -34,68 +45,56 @@ birthweight_df <- read_csv("data/birthweight.csv") %>%
 
 ```
 
-Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+**Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.**
 
-based on knowledge for the factors that underly birthweight, l choose several factors, including:babysex, bhead,blength,frace,gaweeks,malform,mrace,ppwt,wtgain,smoken and then l make  plots and conduct SLR of birthweight versus each factor to see whether there are potential relationship(checking plot and R^2).Finally l choose bhead,blength,gaweeks,which R_squared are bigger than 0.1.
+l used backward elimination to get the model, the variable are babysex, bhead, blength, delwt, fincome, gaweeks, mheight, ppwt, smoken
+```{r eval=FALSE}
+mult.fit = lm(bwt ~ ., data = birthweight_df)
+summary(mult.fit)
 
-```{r echo=FALSE}
-lm(bwt ~ parity, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)
+step1 = update(mult.fit, . ~ . -frace)
+summary(step1)
 
-test <- 
-tibble(
-  variable = c("babysex","bhead","blength","frace","gaweeks","malform","mrace","ppwt","wtgain","smoken"),
-  R_squared = c(
-lm(bwt ~ babysex, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ bhead, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ blength, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ frace, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ gaweeks, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ malform, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ mrace, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ ppwt, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ wtgain, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared),
-lm(bwt ~ smoken, data = birthweight_df) %>% 
-   broom::glance() %>% 
-   pull(r.squared)))
+step2 = update(step1, . ~ . -malform)
+summary(step2)
 
-knitr::kable(test)
+step3 = update(step2, . ~ . -ppbmi)
+summary(step3)
+
+step4 = update(step3, . ~ . -momage)
+summary(step4)
+
+step5 = update(step4, . ~ . -menarche)
+summary(step5)
+
+step6 = update(step5, . ~ . -mrace)
+summary(step6)
+
+step7 = update(step6, . ~ . -pnumlbw)
+summary(step7)
+
+step8 = update(step7, . ~ . -pnumsga)
+summary(step8)
+
+step9 = update(step8, . ~ . -wtgain)
+summary(step9)
+
+step10 = update(step9, . ~ . -parity)
+summary(step10)
+
+
 ```
 
 ```{r}
-fit <- lm(bwt ~ bhead + blength +gaweeks, data =birthweight_df)
+fit <- lm(bwt ~ babysex + bhead + blength + delwt + fincome + gaweeks + mheight + ppwt + smoken, data =birthweight_df)
 
-birthweight_df %>% 
-  modelr::add_residuals(fit) %>% 
-  modelr::add_predictions(fit) %>% 
+birthweight_df %>%
+  modelr::add_residuals(fit) %>%
+  modelr::add_predictions(fit) %>%
   ggplot(aes(x = pred, y = resid)) +
-  geom_point(alpha = 0.3) +
-  labs(
-    title = "Plot of Model Residuals against Fitted Values", 
-    x = "Fitted Values",
-    y = "Residuals"
-  ) 
-
+  geom_point(alpha = 0.3)
 ```
+
 
 
 ```{r}
@@ -105,7 +104,7 @@ cv_df =
     train = map(train, as_tibble),
     test = map(test, as_tibble)) %>% 
   mutate(
-    my_mod         = map(train, ~lm(bwt ~ bhead + blength + gaweeks, data = .x)),
+    my_mod         = map(train, ~lm(bwt ~ babysex + bhead + blength + delwt + fincome + gaweeks + mheight + ppwt + smoken, data = .x)),
     bl_ga_mod      = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
     bh_bl_sex_mod  = map(train, ~lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, data = .x)) 
     ) %>% 
@@ -124,5 +123,76 @@ cv_df %>%
     names_prefix = "rmse_") %>% 
   mutate(model = fct_inorder(model)) %>% 
   ggplot(aes(x = model, y = rmse)) + geom_violin()
+```
+
+# Problem 2
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+```{r}
+get_r <- function(fit){
+  r <- 
+    fit %>% 
+    broom::glance() %>% 
+    pull(r.squared)
+  
+  return(r)
+}
+
+get_log <- function(fit){
+  estimate = 
+  fit %>% 
+    broom::tidy() %>% 
+    pull(estimate)
+  
+  log = log10(prod(estimate) )
+  
+  return(log)
+}
+
+boot_straps <-  
+  weather_df %>% 
+  modelr::bootstrap(n = 5000) %>% 
+  mutate(
+    models = map(strap, ~lm(tmax ~ tmin, data = .x) ),
+    r_squared = unlist(map(models,get_r)),
+    log = unlist(map(models,get_log))
+  ) %>% 
+  select(-strap,-models)
+
+boot_straps %>% 
+  ggplot(aes(x = r_squared))+
+  geom_density()
+
+boot_straps %>% 
+  ggplot(aes(x = log))+
+  geom_density()
+```
+
+```{r}
+boot_straps %>% 
+  summarize(
+    r_low = quantile(r_squared,probs = c(0.025)),
+    r_high = quantile(r_squared,probs = c(0.0975))
+  ) %>% 
+  knitr::kable()
+
+boot_straps %>% 
+  summarize(
+    r_low = quantile(log,probs = c(0.025)),
+    r_high = quantile(log,probs = c(0.0975))
+  )%>% 
+  knitr::kable()
 ```
 
