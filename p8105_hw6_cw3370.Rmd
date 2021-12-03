@@ -12,6 +12,8 @@ library(knitr)
 library(modelr)
 library(corrplot)
 library(leaps)
+library(patchwork)
+
 ```
 
 # Problem 1
@@ -19,7 +21,7 @@ library(leaps)
 **Load and clean the data for regression analysis (i.e. convert numeric to factor where appropriate, check for missing data, etc.).**
 
 Data Description
-```{r}
+```{r message=FALSE}
 birthweight <- read_csv("data/birthweight.csv")  
 skimr::skim(birthweight)
 ```
@@ -47,7 +49,7 @@ birthweight_df <-
 
 **Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.**
 
-l used backward elimination to get the model, the variable are babysex, bhead, blength, delwt, fincome, gaweeks, mheight, ppwt, smoken
+l used backward elimination to get the model, all the variable of which p value is larger than 0.05 are deleted.The variable left are `babysex`, `bhead`, `blength`, `delwt`, `fincome`, `gaweeks`, `mheight`, `ppwt`, `smoken`
 ```{r eval=FALSE}
 mult.fit = lm(bwt ~ ., data = birthweight_df)
 summary(mult.fit)
@@ -85,6 +87,7 @@ summary(step10)
 
 ```
 
+This is the plot of model residutals against fitted value.
 ```{r}
 fit <- lm(bwt ~ babysex + bhead + blength + delwt + fincome + gaweeks + mheight + ppwt + smoken, data =birthweight_df)
 
@@ -92,11 +95,68 @@ birthweight_df %>%
   modelr::add_residuals(fit) %>%
   modelr::add_predictions(fit) %>%
   ggplot(aes(x = pred, y = resid)) +
-  geom_point(alpha = 0.3)
+  geom_point(alpha = 0.3) +
+  labs(title = "Plot of Model Residuals against Fitted Values", 
+       x = "Fitted Values",
+       y = "Residuals"
+  ) +  
+  theme(plot.title = element_text(hjust = 0.5))
+  
+```
+
+**Compare your model to two others:**
+
+(1)One using length at birth and gestational age as predictors (main effects only)
+
+(2)One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
+
+**Make this comparison in terms of the cross-validated prediction error; use crossv_mc and functions in purrr as appropriate.**
+
+This is the plot of Plot of Model Residuals against Fitted Values for my models and other comparisions.
+```{r}
+fit1 <- lm(bwt ~ babysex + bhead + blength + delwt + fincome + gaweeks + mheight + ppwt + smoken, data = birthweight_df)
+fit2 <- lm(bwt ~ blength + gaweeks, data = birthweight_df)
+fit3 <- lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, data = birthweight_df)
+
+plot1 <- birthweight_df %>%
+  modelr::add_residuals(fit1) %>%
+  modelr::add_predictions(fit1) %>%
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.1) +
+  labs(title = "Plot of Model Residuals against Fitted Values(My Model", 
+       x = "Fitted Values",
+       y = "Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+plot2 <- birthweight_df %>%
+  modelr::add_residuals(fit2) %>%
+  modelr::add_predictions(fit2) %>%
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.1) +
+  labs(title = "Plot of Model Residuals against Fitted Values(Model 1)", 
+       x = "Fitted Values",
+       y = "Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+plot3 <- birthweight_df %>%
+  modelr::add_residuals(fit2) %>%
+  modelr::add_predictions(fit2) %>%
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.1) +
+  labs(title = "Plot of Model Residuals against Fitted Values(Model 2)", 
+       x = "Fitted Values",
+       y = "Residuals"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+plot1/plot2/plot3
 ```
 
 
-
+This is the plot of Distribution of Prediction Error for my models and other comparisons.
 ```{r}
 cv_df = 
   crossv_mc(birthweight_df, 100) %>% 
@@ -122,11 +182,17 @@ cv_df %>%
     values_to = "rmse",
     names_prefix = "rmse_") %>% 
   mutate(model = fct_inorder(model)) %>% 
-  ggplot(aes(x = model, y = rmse)) + geom_violin()
+  ggplot(aes(x = model, y = rmse)) + 
+  geom_violin() +
+  scale_x_discrete(breaks = c("my","bl_ga","bh_bl_sex"),
+                   labels = c("My Model","Length and Gestational Age","Head Circumference, Length, Sex"))+
+  labs(title = "Distribution of Prediction Error")+
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 # Problem 2
-```{r}
+**For this problem, we’ll use the 2017 Central Park weather data that we’ve seen elsewhere. The code chunk below (adapted from the course website) will download these data.**
+```{r message=FALSE}
 weather_df = 
   rnoaa::meteo_pull_monitors(
     c("USW00094728"),
@@ -140,6 +206,15 @@ weather_df =
   select(name, id, everything())
 ```
 
+**The boostrap is helpful when you’d like to perform inference for a parameter / value / summary that doesn’t have an easy-to-write-down distribution in the usual repeated sampling framework. We’ll focus on a simple linear regression with tmax as the response and tmin as the predictor, and are interested in the distribution of two quantities estimated from these data:**
+
+  $r^{2}$
+  
+  $log(\beta_{0}*\beta_{1})$
+
+**Use 5000 bootstrap samples and, for each bootstrap sample, produce estimates of these two quantities. Plot the distribution of your estimates, and describe these in words. Using the 5000 bootstrap estimates, identify the 2.5% and 97.5% quantiles to provide a 95% confidence interval for** $r^{2}$ **and**  $log(\beta_{0}*\beta_{1})$. **Note: broom::glance() is helpful for extracting**  $r^{2}$ **from a fitted regression, and broom::tidy() (with some additional wrangling) should help in computing**$log(\beta_{0}*\beta_{1})$ 
+
+This is the distribution of $r^{2}$ and $log(\beta_{0}*\beta_{1})$ 
 ```{r}
 get_r <- function(fit){
   r <- 
@@ -171,15 +246,31 @@ boot_straps <-
   ) %>% 
   select(-strap,-models)
 
-boot_straps %>% 
-  ggplot(aes(x = r_squared))+
-  geom_density()
 
 boot_straps %>% 
-  ggplot(aes(x = log))+
-  geom_density()
+  ggplot(aes(x = r_squared)) +
+  geom_density() +
+  labs(title = "Distribution of R squared", 
+       x = "R squared") +
+  stat_function(fun = dnorm, args = list(mean = mean(boot_straps$r_squared), sd = sd(boot_straps$r_squared)),aes(colour = "Red",alpha = 0.3))+
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5))
+
+boot_straps %>% 
+  ggplot(aes(x = log)) +
+  geom_density() +
+  labs(title = "Distribution of log(B0 *B1)", 
+       x = "log(B0 *B1)") + 
+  stat_function(fun = dnorm, args = list(mean = mean(boot_straps$log), sd = sd(boot_straps$log)),aes(colour = "Red",alpha = 0.3))+
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5))
 ```
+The median and mean of r_squared is `r mean(boot_straps$r_squared)` and `r mean(boot_straps$r_squared)`,the standard error of r_squared is `r sd(boot_straps$r_squared)`. According to the median, mean and plot, this distribution is almost symetric and look like normal distribution. I add a red normal distrbution with the mean and variance are equal to the mean and variance of r_squared. Two curve are similar to each other.
 
+The median and mean of r_squared is `r mean(boot_straps$log)` and `r mean(boot_straps$log)`,the standard error of r_squared is `r sd(boot_straps$log)`. According to the median, mean and plot, this distribution is almost symetric too and look like  normal distribution. I add a red normal distrbution with the mean and variance are equal to themean and variance of log.Two curve are similar to each other.
+
+
+This is the 95% CI of   $r^{2}$ and $log(\beta_{0}*\beta_{1})$
 ```{r}
 boot_straps %>% 
   summarize(
@@ -192,7 +283,7 @@ boot_straps %>%
   summarize(
     r_low = quantile(log,probs = c(0.025)),
     r_high = quantile(log,probs = c(0.0975))
-  )%>% 
+  ) %>% 
   knitr::kable()
 ```
 
