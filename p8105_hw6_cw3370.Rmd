@@ -231,7 +231,7 @@ get_log <- function(fit){
     broom::tidy() %>% 
     pull(estimate)
   
-  log = log10(prod(estimate) )
+  log = log(prod(estimate) )
   
   return(log)
 }
@@ -245,8 +245,10 @@ boot_straps <-
     log = unlist(map(models,get_log))
   ) %>% 
   select(-strap,-models)
+```
 
-
+The median and mean of r_squared is `r mean(boot_straps$r_squared)` and `r mean(boot_straps$r_squared)`,the standard error of r_squared is `r sd(boot_straps$r_squared)`. According to the median, mean and plot, this distribution is almost symetric and look like normal distribution. I add a red normal distrbution with the mean and variance are equal to the mean and variance of r_squared. Two curve are similar to each other.
+```{r}
 boot_straps %>% 
   ggplot(aes(x = r_squared)) +
   geom_density() +
@@ -255,7 +257,11 @@ boot_straps %>%
   stat_function(fun = dnorm, args = list(mean = mean(boot_straps$r_squared), sd = sd(boot_straps$r_squared)),aes(colour = "Red",alpha = 0.3))+
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5))
+```
 
+The median and mean of r_squared is `r mean(boot_straps$log)` and `r mean(boot_straps$log)`,the standard error of r_squared is `r sd(boot_straps$log)`. According to the median, mean and plot, this distribution is almost symmetric too and look like  normal distribution. I add a red normal distrbution with the mean and variance are equal to the mean and variance of log.Two curve are similar to each other.
+
+```{r}
 boot_straps %>% 
   ggplot(aes(x = log)) +
   geom_density() +
@@ -265,9 +271,8 @@ boot_straps %>%
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5))
 ```
-The median and mean of r_squared is `r mean(boot_straps$r_squared)` and `r mean(boot_straps$r_squared)`,the standard error of r_squared is `r sd(boot_straps$r_squared)`. According to the median, mean and plot, this distribution is almost symetric and look like normal distribution. I add a red normal distrbution with the mean and variance are equal to the mean and variance of r_squared. Two curve are similar to each other.
 
-The median and mean of r_squared is `r mean(boot_straps$log)` and `r mean(boot_straps$log)`,the standard error of r_squared is `r sd(boot_straps$log)`. According to the median, mean and plot, this distribution is almost symetric too and look like  normal distribution. I add a red normal distrbution with the mean and variance are equal to themean and variance of log.Two curve are similar to each other.
+
 
 
 This is the 95% CI of   $r^{2}$ and $log(\beta_{0}*\beta_{1})$
