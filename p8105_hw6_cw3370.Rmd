@@ -141,8 +141,8 @@ plot2 <- birthweight_df %>%
   theme(plot.title = element_text(hjust = 0.5))
 
 plot3 <- birthweight_df %>%
-  modelr::add_residuals(fit2) %>%
-  modelr::add_predictions(fit2) %>%
+  modelr::add_residuals(fit3) %>%
+  modelr::add_predictions(fit3) %>%
   ggplot(aes(x = pred, y = resid)) +
   geom_point(alpha = 0.1) +
   labs(title = "Plot of Model Residuals against Fitted Values(Model 2)", 
@@ -182,7 +182,7 @@ cv_df %>%
     values_to = "rmse",
     names_prefix = "rmse_") %>% 
   mutate(model = fct_inorder(model)) %>% 
-  ggplot(aes(x = model, y = rmse)) + 
+  ggplot(aes(x = model, y = rmse,fill = model)) + 
   geom_violin() +
   scale_x_discrete(breaks = c("my","bl_ga","bh_bl_sex"),
                    labels = c("My Model","Length and Gestational Age","Head Circumference, Length, Sex"))+
@@ -261,7 +261,7 @@ boot_straps %>%
   geom_density() +
   labs(title = "Distribution of log(B0 *B1)", 
        x = "log(B0 *B1)") + 
-  stat_function(fun = dnorm, args = list(mean = mean(boot_straps$log), sd = sd(boot_straps$log)),aes(colour = "Red",alpha = 0.3))+
+  stat_function(fun = dnorm, args = list(mean = mean(boot_straps$log), sd = sd(boot_straps$log)),aes(colour = "Red",alpha = 0.3)) +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5))
 ```
@@ -275,14 +275,14 @@ This is the 95% CI of   $r^{2}$ and $log(\beta_{0}*\beta_{1})$
 boot_straps %>% 
   summarize(
     r_low = quantile(r_squared,probs = c(0.025)),
-    r_high = quantile(r_squared,probs = c(0.0975))
+    r_high = quantile(r_squared,probs = c(0.975))
   ) %>% 
   knitr::kable()
 
 boot_straps %>% 
   summarize(
     r_low = quantile(log,probs = c(0.025)),
-    r_high = quantile(log,probs = c(0.0975))
+    r_high = quantile(log,probs = c(0.975))
   ) %>% 
   knitr::kable()
 ```
